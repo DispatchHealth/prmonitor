@@ -1,10 +1,8 @@
 import { throttling } from "@octokit/plugin-throttling";
 import { Octokit } from "@octokit/rest";
 import { GitHubApi } from "./api";
-import { GraphQLClient, gql } from "graphql-request";
 
 const ThrottledOctokit = Octokit.plugin(throttling as any);
-const graphQLEndpoint = "https://api.github.com/graphql";
 
 interface ThrottlingOptions {
   method: string;
@@ -45,11 +43,12 @@ export function buildGitHubApi(token: string): GitHubApi {
     },
   });
 
-  const graphQLClient = new GraphQLClient(graphQLEndpoint, {
+  const graphQLParams = 
+  {
     headers: {
-      Authorization: `Bearer ${token}`,
+      authorization: `Bearer ${token}`,
     },
-  });
+  };
 
   return {
     async loadAuthenticatedUser() {
@@ -99,7 +98,7 @@ export function buildGitHubApi(token: string): GitHubApi {
       );
     },
     loadPullRequestStatus(pr) {
-      const query = gql`
+      const query = `
         query {
           repository(owner: "${pr.repo.owner}", name: "${pr.repo.name}") {
             pullRequest(number: ${pr.number}) {
@@ -118,7 +117,7 @@ export function buildGitHubApi(token: string): GitHubApi {
         }
       `;
 
-      return graphQLClient.request(query).then((response) => {
+      return octokit.graphql(query, graphQLParams).then((response: any) => {
         const result = response.repository.pullRequest;
         const reviewDecision = result.reviewDecision;
         const checkStatus =
